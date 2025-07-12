@@ -95,3 +95,8 @@ You are installing **developer tools** — tools that are **only needed during d
 ---
 
 Let me know if you'd like a quick demo with `package.json` before and after running these commands!
+
+
+- .env file me pahle se node_module and port / database ke bare me de diya karo 
+- jab hum deploy kar dete hai to , tab main me push karte hai to wo khud production me build hoke add ho jata hai 
+- 

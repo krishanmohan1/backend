@@ -1,4 +1,4 @@
-# chai aur backend series
+# chai aur Javascript backend series
 
 This is a video on backend with javascript
 [Model Link is here ](https://app.eraser.io/workspace/YtPqZ1VogxGy1jzIDkzj)

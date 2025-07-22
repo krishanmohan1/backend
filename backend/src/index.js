@@ -1,30 +1,28 @@
 // require('dotenv').config({path: './env'})     // it will work but it is not consitent
 
-import dotenv from 'dotenv'
+import dotenv from "dotenv";
 import connectDB from "./db/index.js";
+import { app } from "./app.js";
 
 dotenv.config({
-  path : './env'
-})
-
+  path: "./env",
+});
 
 connectDB()
-.then(()=>{
+  .then(() => {
+    app.on("ERROR: ", (error)=>{
+          console.log("ERROR:",error);
+          throw error
+      })
 
-  app.on("ERROR: ", (error)=>{
-        console.log("ERROR:",error);
-        throw error 
-    })
+    app.listen(process.env.PORT || 8000, () => {
+      console.log(`Server is runniing at port ${process.env.PORT}`);
+    });
 
-  app.listen(process.env.PORT || 8000 , ()=>{
-    console.log(`Server is runniing at port ${process.env.PORT}`);
   })
-  
-})
-.catch((error)=>{
-      console.log(`MONGODb connection failed !!! `, error);
-      
-})
+  .catch((error) => {
+    console.log(`MONGODb connection failed !!! `, error);
+  });
 
 
 
@@ -32,12 +30,6 @@ connectDB()
 
 
   
-
-
-
-
-
-
 /*
 
 // this method is good , but make index messy so we have another method 

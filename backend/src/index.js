@@ -5,27 +5,26 @@ import connectDB from "./db/index.js";
 import { app } from "./app.js";
 
 dotenv.config({
-  path: "./env",
+  path: "./.env",
 });
 
 connectDB()
   .then(() => {
-    app.on("ERROR: ", (error)=>{
-          console.log("ERROR:",error);
-          throw error
-      })
 
-    app.listen(process.env.PORT || 8000, () => {
-      console.log(`Server is runniing at port ${process.env.PORT}`);
+    // app.on("ERROR: ", (error) => {
+    //   console.log("ERROR:", error);
+    //   throw error;
+    // });
+
+    app.listen(process.env.PORT || 3000, "localhost", () => {
+      console.log(
+        `✅ Server is running at http://localhost:${process.env.PORT}`
+      );
     });
-
   })
   .catch((error) => {
     console.log(`MONGODb connection failed !!! `, error);
   });
-
-
-
 
 
 

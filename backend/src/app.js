@@ -5,8 +5,7 @@ import cors from "cors";
 const app = express(); // ek method ke through sari property transfer hoti hai
 
 // app.use(cors())
-app.use(
-  cors({
+app.use(cors({
     origin: process.env.CORS_ORIGIN,
     credentials: true,
   })
@@ -36,3 +35,5 @@ app.use("/api/v1/users", userRouter);
 // http://localhost:8000/api/v1/users/rgister
 
 export { app };
+
+

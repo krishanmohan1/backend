@@ -6,8 +6,9 @@ const router = Router();
 
 // router.route("/register").post(registerUser);
 // yaha koi bhi file upload hho to routes me controller call hone se pahe 
+
 router.route("/register").post(
-     upload.fields([
+    upload.fields([
         {
             name : "avatar",        // ye eska name frontend me same hona chahiye 
             maxCount : 1

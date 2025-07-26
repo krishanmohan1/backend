@@ -4,8 +4,25 @@ import { User } from "../models/user.model.js";
 
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-
 import validator from "validator";
+
+const generateAccessAndRefreshToken = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false }); // ye mongodb se ban ke aaya hai
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "Something went wrong while generating refresh and access toke"
+    );
+  }
+};
 
 const registerUser = asyncHandler(async (req, res) => {
   // get user details from frontend
@@ -36,21 +53,20 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All fields are compulsory");
   }
 
-
-    // ✅ Email format validation
+  // ✅ Email format validation
   if (!validator.isEmail(email)) {
     throw new ApiError(400, "Invalid email format");
   }
 
-  const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+  const strongPasswordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
   if (!strongPasswordRegex.test(password)) {
-    throw new ApiError(400, "Password must be at least 8 characters and include uppercase, lowercase, number, and special character");
+    throw new ApiError(
+      400,
+      "Password must be at least 8 characters and include uppercase, lowercase, number, and special character"
+    );
   }
-
-
-
-
 
   // emails ka vaidation kar sakte hai ki usme @ hai ki nhi , industry me ek validation ki file bana lete hai , aur us method ko yaha use karte hai vaidate karne me .
 
@@ -67,14 +83,17 @@ const registerUser = asyncHandler(async (req, res) => {
   // files ko handle kaise karte hai
 
   const avatarLocalPath = req.files?.avatar[0].path;
-//   const coverImageLocalPath = req.files?.coverImage[0].path;
+  //   const coverImageLocalPath = req.files?.coverImage[0].path;
 
-// ye  coverImage pe validation lag gya 
+  // ye  coverImage pe validation lag gya
   let coverImageLocalPath;
-  if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
-    coverImageLocalPath = req.files.coverImage[0].path
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
+  ) {
+    coverImageLocalPath = req.files.coverImage[0].path;
   }
-
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar file is required");
@@ -117,34 +136,78 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, createdUser, "User registered successfully "));
 });
 
-
-const loginUser = asyncHandler(async (req, res ) => { 
-
+const loginUser = asyncHandler(async (req, res) => {
   // req body -> data
   // username or email
   // find the user
-  // password check 
-  // access and refresh token 
+  // password check
+  // access and refresh token
   // send cookie
 
-  const {email , username , password} = req. body
+  const { email, username, password } = req.body;
 
-  // if(!email){       -> jab sirf email se login karayenge 
+  // if(!email){       -> jab sirf email se login karayenge
   //   throw new ApiError(400, "Username or email  or is required")
   // }
-  
-  if(!(username || email)){
-    throw new ApiError(400, "Username or email  is required")
+
+  if (!(username || email)) {
+    throw new ApiError(400, "Username or email  is required");
   }
 
+  const user = await User.findOne({
+    $or: [{ username }, { email }],
+  });
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist ");
+  }
+
+  // User and user dono do chij hai ,
+  // User mongoose ka Object hai , db perform ke liye jo method use hote hai
+  // user ye to hum jo db me check karke banaye hai wo hai ye
+
+  const isPasswordValid = await user.isPasswordCorrect(password);
+
+  if (!isPasswordValid) {
+    throw new ApiError(401, "Password is not valid ");
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+    user._id
+  );
+
+  // yaha jo user pahe se find kiye the usme , to refreshAurAccess Token nhi hai
+  // uske liye phir se find call karo user._id se
+
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+
+  const option = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, option)
+    .cookie("refreshToken", refreshToken, option)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "User logged in Sucessfully"
+      )
+    );
+});
+
+
+const logoutuser = asyncHandler( async (req, res) => {
   
-
-
-
-
-
 })
 
-
-
-export { registerUser , loginUser};
+export { registerUser, loginUser };

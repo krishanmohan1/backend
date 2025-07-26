@@ -5,6 +5,8 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+import validator from "validator";
+
 const registerUser = asyncHandler(async (req, res) => {
   // get user details from frontend
   // validate - not empty
@@ -34,6 +36,22 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All fields are compulsory");
   }
 
+
+    // ✅ Email format validation
+  if (!validator.isEmail(email)) {
+    throw new ApiError(400, "Invalid email format");
+  }
+
+  const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+
+  if (!strongPasswordRegex.test(password)) {
+    throw new ApiError(400, "Password must be at least 8 characters and include uppercase, lowercase, number, and special character");
+  }
+
+
+
+
+
   // emails ka vaidation kar sakte hai ki usme @ hai ki nhi , industry me ek validation ki file bana lete hai , aur us method ko yaha use karte hai vaidate karne me .
 
   const existedUser = await User.findOne({
@@ -62,7 +80,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar file is required");
   }
 
-  const avatar = await uploadOnCloudinary(avatarLocalPath); // servers pe upload hone me time lagta hai , humse bhalle he fractions of second me dikhta hai
+  const avatar = await uploadOnCloudinary(avatarLocalPath); // servers pe upload hone me time lagta hai , humesa bhalle he fractions of second me dikhta hai
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
   //  ye check kiye ki coudnary pe upload hua ki nhi
@@ -99,4 +117,34 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, createdUser, "User registered successfully "));
 });
 
-export { registerUser };
+
+const loginUser = asyncHandler(async (req, res ) => { 
+
+  // req body -> data
+  // username or email
+  // find the user
+  // password check 
+  // access and refresh token 
+  // send cookie
+
+  const {email , username , password} = req. body
+
+  // if(!email){       -> jab sirf email se login karayenge 
+  //   throw new ApiError(400, "Username or email  or is required")
+  // }
+  
+  if(!(username || email)){
+    throw new ApiError(400, "Username or email  is required")
+  }
+
+  
+
+
+
+
+
+})
+
+
+
+export { registerUser , loginUser};

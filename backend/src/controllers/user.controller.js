@@ -6,6 +6,8 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import validator from "validator";
 
+
+// yaha par asynchandler use nhi kiya hai kyu ki yaha koi , web request nhi kiye hai , like ye internal methods pe hoga 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
     const user = await User.findById(userId);
@@ -19,7 +21,7 @@ const generateAccessAndRefreshToken = async (userId) => {
   } catch (error) {
     throw new ApiError(
       500,
-      "Something went wrong while generating refresh and access toke"
+      "Something went wrong while generating refresh and access token"
     );
   }
 };
@@ -154,8 +156,11 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Username or email  is required");
   }
 
+  // User.findOne({username})
+
   const user = await User.findOne({
-    $or: [{ username }, { email }],
+    $or: [{ username }, { email }],     // $or ye sab mongodb ke operators hai
+
   });
 
   if (!user) {
@@ -183,6 +188,8 @@ const loginUser = asyncHandler(async (req, res) => {
     "-password -refreshToken"
   );
 
+  // cookies ko koi bhi modify kar sakta hai , frontend se , lekin jab httpOnly , secure true karte hai to ye server se he sirf , modify kar sakte hai
+  // ye cookies bhejne me kaam aata hai 
   const option = {
     httpOnly: true,
     secure: true,
@@ -196,6 +203,7 @@ const loginUser = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         {
+          // hum upper cookies me access aur refresh token dono bhej diya hai , phir bhi api response me kyu bhej rahe hahi , kyu ki ho sakta hai , user access aur refresh token ko local storage ya application me store karna chahra ho uske liye  
           user: loggedInUser,
           accessToken,
           refreshToken,
@@ -205,9 +213,43 @@ const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
-
-const logoutuser = asyncHandler( async (req, res) => {
+ 
+const logoutUser = asyncHandler( async (req, res) => {
+  // logout kaise kar sakta hu , pahle uski cookie clear karni padegi 
+  // aur user  refresh token ko bhi clear karna hoga 
   
+
+  // es process se refresh token delete hua hai 
+  await User.findByIdAndUpdate(     // ye ek method hai mongoose object ka 
+    req.user._id,
+    {
+      $set : {    // ye mongodb ka operator hai set karne ke liye 
+        refreshToken : undefined
+      }
+    },
+    {
+      new : true      // eske karan jo response me value milegi usme new updated value milegi 
+    }
+  )
+
+  // aab cookies se bhi delete karna hoga refresh aur access token 
+
+  // cookies ke liye option chahiye 
+
+  const option = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res 
+  .status(200)
+  .clearCookie("accessToken", option)
+  .clearCookie("refreshToken", option)
+  .json(new ApiResponse(200, {}, "User logged Out"))
+
+
 })
 
-export { registerUser, loginUser };
+export { registerUser, loginUser, logoutUser };
+
+

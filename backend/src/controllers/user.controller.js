@@ -1,16 +1,20 @@
 import { asyncHandler } from "../utils/asynchandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import validator from "validator";
+import jwt from "jsonwebtoken";
 
-
-// yaha par asynchandler use nhi kiya hai kyu ki yaha koi , web request nhi kiye hai , like ye internal methods pe hoga 
+// yaha par asynchandler use nhi kiya hai kyu ki yaha koi , web request nhi kiye hai , like ye internal methods pe hoga
 const generateAccessAndRefreshToken = async (userId) => {
   try {
+    console.log("Generating tokens for userId:", userId); // 👈 Add this
     const user = await User.findById(userId);
+    if (!user) {
+      console.error("User not found for ID:", userId); // 👈 Debug log
+      throw new ApiError(404, "User not found while generating tokens");
+    }
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
@@ -19,6 +23,7 @@ const generateAccessAndRefreshToken = async (userId) => {
 
     return { accessToken, refreshToken };
   } catch (error) {
+    console.error("Token generation error:", error); // 👈 log real error
     throw new ApiError(
       500,
       "Something went wrong while generating refresh and access token"
@@ -152,15 +157,14 @@ const loginUser = asyncHandler(async (req, res) => {
   //   throw new ApiError(400, "Username or email  or is required")
   // }
 
-  if (!(username || email)) {
+  if (!username && !email) {
     throw new ApiError(400, "Username or email  is required");
   }
 
   // User.findOne({username})
 
   const user = await User.findOne({
-    $or: [{ username }, { email }],     // $or ye sab mongodb ke operators hai
-
+    $or: [{ username }, { email }], // $or ye sab mongodb ke operators hai
   });
 
   if (!user) {
@@ -189,7 +193,7 @@ const loginUser = asyncHandler(async (req, res) => {
   );
 
   // cookies ko koi bhi modify kar sakta hai , frontend se , lekin jab httpOnly , secure true karte hai to ye server se he sirf , modify kar sakte hai
-  // ye cookies bhejne me kaam aata hai 
+  // ye cookies bhejne me kaam aata hai
   const option = {
     httpOnly: true,
     secure: true,
@@ -203,7 +207,7 @@ const loginUser = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         {
-          // hum upper cookies me access aur refresh token dono bhej diya hai , phir bhi api response me kyu bhej rahe hahi , kyu ki ho sakta hai , user access aur refresh token ko local storage ya application me store karna chahra ho uske liye  
+          // hum upper cookies me access aur refresh token dono bhej diya hai , phir bhi api response me kyu bhej rahe hahi , kyu ki ho sakta hai , user access aur refresh token ko local storage ya application me store karna chahra ho uske liye
           user: loggedInUser,
           accessToken,
           refreshToken,
@@ -213,43 +217,97 @@ const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
- 
-const logoutUser = asyncHandler( async (req, res) => {
-  // logout kaise kar sakta hu , pahle uski cookie clear karni padegi 
-  // aur user  refresh token ko bhi clear karna hoga 
-  
+const logoutUser = asyncHandler(async (req, res) => {
+  // logout kaise kar sakta hu , pahle uski cookie clear karni padegi
+  // aur user  refresh token ko bhi clear karna hoga
 
-  // es process se refresh token delete hua hai 
-  await User.findByIdAndUpdate(     // ye ek method hai mongoose object ka 
+  // es process se refresh token delete hua hai
+  await User.findByIdAndUpdate(
+    // ye ek method hai mongoose object ka
     req.user._id,
     {
-      $set : {    // ye mongodb ka operator hai set karne ke liye 
-        refreshToken : undefined
-      }
+      $set: {
+        // ye mongodb ka operator hai set karne ke liye
+        refreshToken: undefined,
+      },
     },
     {
-      new : true      // eske karan jo response me value milegi usme new updated value milegi 
+      new: true, // eske karan jo response me value milegi usme new updated value milegi
     }
-  )
+  );
 
-  // aab cookies se bhi delete karna hoga refresh aur access token 
+  // aab cookies se bhi delete karna hoga refresh aur access token
 
-  // cookies ke liye option chahiye 
+  // cookies ke liye option chahiye
 
   const option = {
     httpOnly: true,
     secure: true,
   };
 
-  return res 
-  .status(200)
-  .clearCookie("accessToken", option)
-  .clearCookie("refreshToken", option)
-  .json(new ApiResponse(200, {}, "User logged Out"))
+  return res
+    .status(200)
+    .clearCookie("accessToken", option)
+    .clearCookie("refreshToken", option)
+    .json(new ApiResponse(200, {}, "User logged Out"));
+});
 
+// ye api endpoint hit karega jab access token expire ho jayega
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const incomingRefreshToken =
+    req.cookies.refreshToken || req.body.refreshToken;
+  if (!incomingRefreshToken) {
+    throw new ApiError(401, "unauthorized request");
+  }
 
-})
+  // esse decoded information mil jata hai, user ke pass jo pahuchta hai wo encryped pahuchta hai
+  try {
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+    // es decoded Refresh Token se bannae ke time jo info diye the , wo mil sakta hai like _id
 
-export { registerUser, loginUser, logoutUser };
+    const user = await User.findById(decodedToken?._id);
+    // esse pata kiye kon hai ye user uske refrehs token me present id se
+    if (!user) {
+      throw new ApiError(401, "Invalid refreshToken");
+    }
+    // agar user valid nhi hai to
 
+    // hum yaha ek encoded refresh token cookies se liye then , jab user bana rahe the tab bhi user me encoded refresh token ko save kiye the , login ke time , ye dono same hona chahiye
 
+    if (incomingRefreshToken !== user?.refreshToken) {
+      throw new ApiError(401, "Refresh Token is expired or used");
+    }
+
+    // to aab jab vallidation ho gya to , new access token aur refresh token generate kar do
+    // esko generate karne ke liye  upper se generateAccessAndRefreshToken() method banatha , esko global me bhi bana sakte the
+
+    // ye option baar baar use ho rha hai to global bhi use kar sakte hai
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+
+    const { accessToken, newRefreshToken } =
+      await generateAccessAndRefreshToken(user._id);
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, refreshToken: newRefreshToken },
+          "Access token refreshed"
+        )
+      );
+  } catch (error) {
+    console.log(error);
+    throw new ApiError(401, error?.message || "Invalid refresh token");
+  }
+});
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken };

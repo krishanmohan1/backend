@@ -11,4 +11,4 @@ owner: {
 }
 }, {timestamps: true})
 
-export const Tweet = mongoose.model("Tweet", tweetSchema)f
+export const Tweet = mongoose.model("Tweet", tweetSchema)

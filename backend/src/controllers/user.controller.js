@@ -253,8 +253,6 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged Out"));
 });
 
-
-
 // ye api endpoint hit karega jab access token expire ho jayega
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
@@ -313,296 +311,254 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-
-const changeCurrentPassword = asyncHandler( async (req, res) =>{
-  const {oldPassword, newPassword} = req.body
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
 
   // ye jo hum auth middleware banaye hai usse hum req me user daal sakte hai , routes ke time
-  const user = await User.findById(req.user?._id)     // ye userId kaise liye hai espe dhyan se dekho 
-  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)   
+  const user = await User.findById(req.user?._id); // ye userId kaise liye hai espe dhyan se dekho
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
 
-  if(!isPasswordCorrect){
-    throw new ApiError(400, "Invalid old password")
+  if (!isPasswordCorrect) {
+    throw new ApiError(400, "Invalid old password");
   }
 
-  user.password = newPassword     // ye sirf set kiye hai , esko save karna hoga user model me password jake dekho kaise save hota hai 
-  await user.save({validateBeforeSave : false})
-
+  user.password = newPassword; // ye sirf set kiye hai , esko save karna hoga user model me password jake dekho kaise save hota hai
+  await user.save({ validateBeforeSave: false });
 
   return res
-  .status(200)
-  .json(new ApiResponse(200,
-    {},
-    "Password changed successfully"
-  ))
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully"));
+});
 
-})
-
-
-const getCurrentUser = asyncHandler( async (req, res) =>{
+const getCurrentUser = asyncHandler(async (req, res) => {
   return res
-  .status(200)
-  .json(200, req.user, "current user fetched successfullly")
+    .status(200)
+    .json(200, req.user, "current user fetched successfullly");
+});
 
-})
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  const { fullName, email } = req.body;
 
-
-const updateAccountDetails = asyncHandler(async (req, res) =>{
-  const {fullName, email} = req.body
-
-  if(!fullName || !email) {
-    throw new ApiError(404, "All fields are required")
+  if (!fullName || !email) {
+    throw new ApiError(404, "All fields are required");
   }
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
-      $set:{      // ye naya syntax hai aise bhi likhe sakte hai fullName update ho jayega 
+      $set: {
+        // ye naya syntax hai aise bhi likhe sakte hai fullName update ho jayega
         fullName,
-        email : email
-      }
+        email: email,
+      },
     },
     {
-      new : true
+      new: true,
     }
-  
-  ).select("-password")
-
+  ).select("-password");
 
   return res
-  .status(200)
-  .json(new ApiResponse(200, user, "Account Details updated successfuly"))
-  
+    .status(200)
+    .json(new ApiResponse(200, user, "Account Details updated successfuly"));
+});
 
-})
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalPath = req.file?.path;
 
-
-const updateUserAvatar = asyncHandler(async (req, res)=>{
-  const avatarLocalPath = req.file?.path
-
-  if(!avatarLocalPath){
-    throw new ApiError(400,"Avatar file is missing")
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar file is missing");
   }
 
-  const avatar = await uploadOnCloudinary(avatarLocalPath)
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
 
-  if(!avatar.url){
-        throw new ApiError(400,"Error while uploading avatar")
+  if (!avatar.url) {
+    throw new ApiError(400, "Error while uploading avatar");
   }
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
-      $set:{
-        avatar : avatar.url
-      }
+      $set: {
+        avatar: avatar.url,
+      },
     },
     {
-      new : true
+      new: true,
     }
-  ).select("-password")
+  ).select("-password");
 
   return res
-  .status(200)
-  .json(
-    new ApiResponse(200,user, "Avatar is updated successfullly")
-  )
+    .status(200)
+    .json(new ApiResponse(200, user, "Avatar is updated successfullly"));
+});
 
-})
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+  const coverImageLocalPath = req.file?.path;
 
-
-const updateUserCoverImage = asyncHandler(async (req, res)=>{
-  const coverImageLocalPath = req.file?.path
-
-  if(!coverImageLocalPath){
-    throw new ApiError(400,"CoverImage  file is missing")
+  if (!coverImageLocalPath) {
+    throw new ApiError(400, "CoverImage  file is missing");
   }
 
-  const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-  if(!coverImage.url){
-        throw new ApiError(400,"Error while uploading coverImage")
+  if (!coverImage.url) {
+    throw new ApiError(400, "Error while uploading coverImage");
   }
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
-      $set:{
-        coverImage : coverImage.url
-      }
+      $set: {
+        coverImage: coverImage.url,
+      },
     },
     {
-      new : true
+      new: true,
     }
-  ).select("-password")
+  ).select("-password");
 
   return res
-  .status(200)
-  .json(
-    new ApiResponse(200,user, "cover image  is updated successfullly")
-  )
+    .status(200)
+    .json(new ApiResponse(200, user, "cover image  is updated successfullly"));
+});
 
-})
-
-
-const getUserChannelProfile = asyncHandler(async(req, res) =>{
-
-  const {username} = req.params
-  if(!username?.trim()){
-    throw new ApiError(400, "username is missing")
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+  if (!username?.trim()) {
+    throw new ApiError(400, "username is missing");
   }
 
   // values after aggregation return is ARRAY
   const channel = await User.aggregate([
     {
-      $match : {
-        username : username?.toLowerCase()
-      }
-    },
-    {
-      $lookup : {
-        from : "subscriptions",
-        localField : "_id",
-        foreignField : "channel",
-        as:"subscribers"
-      }
+      $match: {
+        username: username?.toLowerCase(),
+      },
     },
     {
       $lookup: {
-        from : "subscriptions",
-        localField : "_id",
-        foreignField : "subscriber",
-        as:"subscribedTo"
-      }
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
     },
     {
-      $addFields:{
-        subscribersCount : {
-          $size: "$subscribers"
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+    {
+      $addFields: {
+        subscribersCount: {
+          $size: "$subscribers",
         },
-        channelsSubscribedToCount:{
-          $size : "$subscribedTo"
+        channelsSubscribedToCount: {
+          $size: "$subscribedTo",
         },
-        isSubscribed:{
-          $cond:{
-            if:{$in: [req.user?._id, "$subscribers.subscriber"]},
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
             then: true,
-            else: false
-          }
-        }
-      }
+            else: false,
+          },
+        },
+      },
     },
     {
-      $project :{     // selected chije dunga 
+      $project: {
+        // selected chije dunga
         fullName: 1,
-        username : 1,
+        username: 1,
         subscribersCount: 1,
         channelsSubscribedToCount: 1,
         isSubscribed: 1,
-        avatar : 1,
-        coverImage : 1,
-        email: 1
-
-
-
-        
-      }
-    }
-  ])
+        avatar: 1,
+        coverImage: 1,
+        email: 1,
+      },
+    },
+  ]);
 
   // console kar karke dekho channels ko , kya return karta hai what aggregate returns
 
-  if(!channel?.length){
-    throw new ApiError(404, "channel does  not exist")
+  if (!channel?.length) {
+    throw new ApiError(404, "channel does  not exist");
   }
 
   return res
-  .status(200)
-  .json(new ApiResponse(200, channel[0],"UserChannel fetched"))
-  // ye return array karta hai wo array ke 0th index pe sare value milte hai 
+    .status(200)
+    .json(new ApiResponse(200, channel[0], "UserChannel fetched"));
+  // ye return array karta hai wo array ke 0th index pe sare value milte hai
+});
 
-
-})
-
-const getWatchedHistory = asyncHandler(async(req, res)=>{
+const getWatchedHistory = asyncHandler(async (req, res) => {
   // req.user._id  --> yaha par ek String milti hai , jisko mongoose internally mongodb ki Id banadeta hai  ObjectIdOrHexString(" me ")
-  // jab hum find() , findById()  to esko convert kar deta hai  Object id me 
+  // jab hum find() , findById()  to esko convert kar deta hai  Object id me
 
   const user = await User.aggregate([
     {
-      $match:{
-        _id: new mongoose.Types.ObjectId(req.user._id)    // yaha _id ko Object id me convert karna padta hai kyu ye string me aata hai 
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id), // yaha _id ko Object id me convert karna padta hai kyu ye string me aata hai
       },
-      $lookup:{
-        from:"videos",
+      $lookup: {
+        from: "videos",
         localField: "watchHistory",
         foreignField: "_id",
-        as : "WatchHistory",
-        pipeline:[
+        as: "WatchHistory",
+        pipeline: [
           {
-            $lookup:{
-              from : user,
-              localField:"owner",
-              foreignField:"_id",
+            $lookup: {
+              from: user,
+              localField: "owner",
+              foreignField: "_id",
               as: "owner",
-              pipeline:[
+              pipeline: [
                 {
-                  $project:{
+                  $project: {
                     fullName: 1,
                     username: 1,
-                    avatar: 1
-                  }
-                }
-              ]
-            }
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
           },
           {
-            $addFields:{
-              owner:{
-                $first: "$owner"
-              }
-            }
-          }
-        ]
-      }
-    }
-  ])
+            $addFields: {
+              owner: {
+                $first: "$owner",
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
 
   return res
-  .status(200)
-  .json(new ApiResponse(200, user[0].watchHistory,
-    "Watch History Fetched successfullly "
-  ))
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        "Watch History Fetched successfullly "
+      )
+    );
+});
 
-})
-
-
-
-
-
-
-
-
-
-
-
-
-
-export { 
+export {
   registerUser,
-  loginUser, 
-  logoutUser, 
-  refreshAccessToken, 
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
   changeCurrentPassword,
   getCurrentUser,
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
-  getUserChannelProfile
-
+  getUserChannelProfile,
 };
-
-
-
-
-

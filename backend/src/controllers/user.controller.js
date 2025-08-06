@@ -5,6 +5,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import validator from "validator";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 // yaha par asynchandler use nhi kiya hai kyu ki yaha koi , web request nhi kiye hai , like ye internal methods pe hoga
 const generateAccessAndRefreshToken = async (userId) => {
@@ -410,7 +411,6 @@ const updateUserAvatar = asyncHandler(async (req, res)=>{
 })
 
 
-
 const updateUserCoverImage = asyncHandler(async (req, res)=>{
   const coverImageLocalPath = req.file?.path
 
@@ -443,7 +443,6 @@ const updateUserCoverImage = asyncHandler(async (req, res)=>{
   )
 
 })
-
 
 
 const getUserChannelProfile = asyncHandler(async(req, res) =>{
@@ -525,6 +524,64 @@ const getUserChannelProfile = asyncHandler(async(req, res) =>{
 
 })
 
+const getWatchedHistory = asyncHandler(async(req, res)=>{
+  // req.user._id  --> yaha par ek String milti hai , jisko mongoose internally mongodb ki Id banadeta hai  ObjectIdOrHexString(" me ")
+  // jab hum find() , findById()  to esko convert kar deta hai  Object id me 
+
+  const user = await User.aggregate([
+    {
+      $match:{
+        _id: new mongoose.Types.ObjectId(req.user._id)    // yaha _id ko Object id me convert karna padta hai kyu ye string me aata hai 
+      },
+      $lookup:{
+        from:"videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as : "WatchHistory",
+        pipeline:[
+          {
+            $lookup:{
+              from : user,
+              localField:"owner",
+              foreignField:"_id",
+              as: "owner",
+              pipeline:[
+                {
+                  $project:{
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1
+                  }
+                }
+              ]
+            }
+          },
+          {
+            $addFields:{
+              owner:{
+                $first: "$owner"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ])
+
+  return res
+  .status(200)
+  .json(new ApiResponse(200, user[0].watchHistory,
+    "Watch History Fetched successfullly "
+  ))
+
+})
+
+
+
+
+
+
+
 
 
 
@@ -540,7 +597,8 @@ export {
   getCurrentUser,
   updateAccountDetails,
   updateUserAvatar,
-  updateUserCoverImage
+  updateUserCoverImage,
+  getUserChannelProfile
 
 };
 

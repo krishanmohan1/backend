@@ -158,7 +158,7 @@ const loginUser = asyncHandler(async (req, res) => {
   // }
 
   if (!username && !email) {
-    throw new ApiError(400, "Username or email  is required");
+    throw new ApiError(400, "Username and email  is required");
   }
 
   // User.findOne({username})
@@ -252,6 +252,8 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged Out"));
 });
 
+
+
 // ye api endpoint hit karega jab access token expire ho jayega
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
@@ -260,7 +262,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     throw new ApiError(401, "unauthorized request");
   }
 
-  // esse decoded information mil jata hai, user ke pass jo pahuchta hai wo encryped pahuchta hai
+  // esse decoded information mil jata hai, user ke pass jo pahuchta hai wo encrypted pahuchta hai
   try {
     const decodedToken = jwt.verify(
       incomingRefreshToken,
@@ -439,6 +441,87 @@ const updateUserCoverImage = asyncHandler(async (req, res)=>{
   .json(
     new ApiResponse(200,user, "cover image  is updated successfullly")
   )
+
+})
+
+
+
+const getUserChannelProfile = asyncHandler(async(req, res) =>{
+
+  const {username} = req.params
+  if(!username?.trim()){
+    throw new ApiError(400, "username is missing")
+  }
+
+  // values after aggregation return is ARRAY
+  const channel = await User.aggregate([
+    {
+      $match : {
+        username : username?.toLowerCase()
+      }
+    },
+    {
+      $lookup : {
+        from : "subscriptions",
+        localField : "_id",
+        foreignField : "channel",
+        as:"subscribers"
+      }
+    },
+    {
+      $lookup: {
+        from : "subscriptions",
+        localField : "_id",
+        foreignField : "subscriber",
+        as:"subscribedTo"
+      }
+    },
+    {
+      $addFields:{
+        subscribersCount : {
+          $size: "$subscribers"
+        },
+        channelsSubscribedToCount:{
+          $size : "$subscribedTo"
+        },
+        isSubscribed:{
+          $cond:{
+            if:{$in: [req.user?._id, "$subscribers.subscriber"]},
+            then: true,
+            else: false
+          }
+        }
+      }
+    },
+    {
+      $project :{     // selected chije dunga 
+        fullName: 1,
+        username : 1,
+        subscribersCount: 1,
+        channelsSubscribedToCount: 1,
+        isSubscribed: 1,
+        avatar : 1,
+        coverImage : 1,
+        email: 1
+
+
+
+        
+      }
+    }
+  ])
+
+  // console kar karke dekho channels ko , kya return karta hai what aggregate returns
+
+  if(!channel?.length){
+    throw new ApiError(404, "channel does  not exist")
+  }
+
+  return res
+  .status(200)
+  .json(new ApiResponse(200, channel[0],"UserChannel fetched"))
+  // ye return array karta hai wo array ke 0th index pe sare value milte hai 
+
 
 })
 

@@ -9,6 +9,8 @@ import {
   registerUser,
   updateAccountDetails,
   updateUserAvatar,
+  updateUserCoverImage,
+  getWatchedHistory
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -45,7 +47,7 @@ router
   .patch(verifyJWT, upload.single("avatar"), updateUserAvatar); // upload me files tha , but yaha par ek he file update hoo rahi rahi hai isiliye , single aur uska naam
 router
   .route("/cover-image")
-  .patch(verifyJWT, upload.single("coverImage").updateUserCoverImage);
+  .patch(verifyJWT, upload.single("coverImage"),updateUserCoverImage);
 
 router.route("/c/:username").get(verifyJWT, getUserChannelProfile);
 

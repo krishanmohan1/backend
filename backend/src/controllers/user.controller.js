@@ -227,10 +227,16 @@ const logoutUser = asyncHandler(async (req, res) => {
     // ye ek method hai mongoose object ka
     req.user._id,
     {
-      $set: {
-        // ye mongodb ka operator hai set karne ke liye
-        refreshToken: undefined,
-      },
+      // $set: {
+      //   // ye mongodb ka operator hai set karne ke liye       -->  ye refreshToken : undefined se kabhi kabhi nhi chalti hai , so usko null karke dekh sakte hai but , ye sahi approach nhi hoooga so. another way is here  
+      //   refreshToken: undefined,
+      // },
+
+      $unset:{
+        refreshToken: 1     // this removes the fields from documents
+      }
+
+
     },
     {
       new: true, // eske karan jo response me value milegi usme new updated value milegi
@@ -561,4 +567,5 @@ export {
   updateUserAvatar,
   updateUserCoverImage,
   getUserChannelProfile,
+  getWatchedHistory
 };

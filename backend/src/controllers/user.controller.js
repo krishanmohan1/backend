@@ -243,7 +243,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     }
   );
 
-  // aab cookies se bhi delete karna hoga refresh aur access token
+  // aab cookies se bhi delete karna hoga refresh aur access token here
 
   // cookies ke liye option chahiye
 
